@@ -1,30 +1,221 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>M3U8 Player</title>
-  <style>
-    body { margin:0; display:flex; justify-content:center; align-items:center; height:100vh; background:#000; }
-    video { width:90%; max-width:800px; border:3px solid #fff; border-radius:10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirazline TV</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+        }
+        /* Custom scrollbar for better visibility */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+            border-radius: 4px;
+        }
+    </style>
+    <script type='text/javascript' src='//pl27607341.revenuecpmgate.com/1a/f4/e8/1af4e891fa5dcd89a0eb194024838bc5'></script>
 </head>
-<body>
-  <video id="video" controls autoplay></video>
+<body class="flex items-center justify-center min-h-screen text-white p-4 md:p-8">
 
-  <!-- HLS.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    const video = document.getElementById('video');
-    const videoSrc = "https://tvsen5.aynaott.com/tsports/index.m3u8"; // এখানে তোমার m3u8 লিংক বসাও
+    <div class="w-full max-w-4xl bg-gray-900 rounded-3xl shadow-2xl overflow-hidden p-6 md:p-8 border-t-4 border-b-4 border-indigo-500">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-6 text-indigo-400">Skyline TV</h1>
+        
+        <!-- Video Player -->
+        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-xl mb-6">
+            <video id="video" class="w-full h-full" controls></video>
+            <div id="loading-indicator" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10 hidden">
+                <p class="text-xl md:text-2xl font-semibold text-white">Loading...</p>
+            </div>
+        </div>
 
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
-    }
-  </script>
+        <!-- Player Controls -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <h2 id="current-channel-name" class="text-xl md:text-2xl font-semibold text-center text-indigo-300"></h2>
+            <div class="flex items-center gap-4">
+                <button id="prev-btn" class="py-2 px-4 rounded-full bg-gray-700 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-900 transition-colors duration-200">
+                    Previous
+                </button>
+                <button id="next-btn" class="py-2 px-4 rounded-full bg-gray-700 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-900 transition-colors duration-200">
+                    Next
+                </button>
+            </div>
+        </div>
+        
+        <!-- Channel List -->
+        <div>
+            <h2 class="text-xl font-semibold text-center mb-4 text-gray-400">চ্যানেল তালিকা</h2>
+            <div id="channel-list" class="flex overflow-x-auto gap-4 py-2">
+                <!-- Channel buttons will be inserted here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Box for user feedback -->
+    <div id="message-box" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl text-center border border-indigo-500">
+            <p id="message-text" class="text-lg text-white mb-4"></p>
+            <button id="close-message-btn" class="py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-900">ওকে</button>
+        </div>
+    </div>
+
+    <!-- Hls.js library for m3u8 playback -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        const video = document.getElementById('video');
+        const channelListContainer = document.getElementById('channel-list');
+        const currentChannelNameEl = document.getElementById('current-channel-name');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        // Message box elements
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const closeMessageBtn = document.getElementById('close-message-btn');
+
+        // Replace with your actual m3u8 URLs and add logo URLs
+        const channels = [
+            { name: "STAR JALSHA", url: "https://live.dinesh29.com.np/stream/jiotvplus/starjalshahd/master.m3u8", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3W9qiYW7toPvoJs-jvG0zhxuFFp1EQq1OfHnMWGVQSzeH3bXz78Md696q&s=10" },
+            { name: "Zee Bangla", url: "https://catchup.yuppcdn.net/amazonv2/36/preview/zeebangla/master/chunklist.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/Zee_Bangla_logo.png" },
+            { name: "Colors Bangla", url: "https://smart.bengaldigital.live/Zee-Bangla-Cinema/index.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/images%20(2).jpg" },
+            { name: "Eiter10 Bangla", url: "https://live-bangla.akamaized.net/liveabr/pub-iobanglakp3sff/live_720p/chunks.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/unnamed.jpg" },
+            { name: "SONY AATH", url: "https://live20.bozztv.com/giatvplayout7/giatv-209611/index.m3u8", logo: "https://upload.wikimedia.org/wikipedia/en/d/d4/Sony_Aath_new.png" },
+            // Additional channels below to make 35
+            { name: "SUN BANGLA", url: "https://smart.bengaldigital.live/sun-bangla-paid/tracks-v1a1/mono.m3u8", logo: "https://play-lh.googleusercontent.com/HnU0M0AcsG4ljd8IMm5Ck1ARo0pqxwuYf2QgyHA0DRTHW8JTHBFKSY49spFUD8RaNAY" },
+            { name: "JALSHA MOVIES", url: "https://live.dinesh29.com.np/stream/jiotvplus/jalshamovieshd/master.m3u8", logo: "https://banner2.cleanpng.com/20180623/qf/aazug0foc.webp" },
+            { name: "Sangeet Bangla", url: "https://cdn-4.pishow.tv/live/1143/master.m3u8", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYYLijjughYF51FVjWeUtGKFckDYqm8B1elAgERP4HIDMf8KpDYC7LpZ4&s=10" },
+            { name: "T Sports", url: "https://tvsen5.aynaott.com/tsports/index.m3u8?e=1753741223&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=286a45e3006c0b412ce19722499f2126", logo: "https://i.postimg.cc/L6VyzMM9/tsports.jpg" },
+            { name: "Star Sports", url: "https://live20.bozztv.com/akamaissh101/ssh101/starsports/chunks.m3u8", logo: "https://i.postimg.cc/HWXvkyZ7/stars1.jpg" },
+            { name: "Ten Cricket", url: "https://edge3-moblive.yuppcdn.net/drm/smil:tencricketdrm.smil/index.m3u8", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRo1clcgXKVu87qdMMczrTAGwcnEgTi6AUW0lncEdjGlNSgKIGQ3wXeJnE4&s=10" },
+            { name: "Willow Sports", url: "https://tvsen5.aynaott.com/willowhd/index.m3u8?e=1753741230&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=5fca30251e531337b5339bbba78bd449", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaejQ5yYMfDTHbC8SP-Bgp6S2nM_QqaO_skQ&usqp=CAU" },
+            { name: "RTA Sports", url: "https://rtatv.akamaized.net/Content/HLS/Live/channel(RTA3)/variant.m3u8", logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRwZU-ecqYXjJgAdwoHkoQBNVu3raFFsVD5SzB3Og2vNtaQwAwaGHG6Uw&s=10" },
+            { name: "Bangla Plus", url: "https://live-stream.utkalbongo.com/hls/livebanglatvstream.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/Bangla%20plus.png" },
+            { name: "Amar Digital", url: "https://live-stream.utkalbongo.com/utkalbongo/stream2/hls/amarbanglatwolivestream.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/aamar_digital.png" },
+            { name: "Amar Bangla", url: "https://live-stream.utkalbongo.com/utkalbongo/stream10/hls/amarbangla.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/amar%20bangla.png" },
+            { name: "Moon TV", url: "https://live-stream.utkalbongo.com/utkalbongo/stream7/hls/montvlivestream.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/1708ecea-d867-423c-9743-2aabefcd8ecc.jpg" },
+            { name: "BTV", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1709/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1735561595482.png" },
+            { name: "Bangla Vision", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1715/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1735561344354.png" },
+            { name: "Deepto TV", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1711/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1742713000749.png" },
+            { name: "NTV", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1716/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1735560841094.png" },
+            { name: "ATN Bangla", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1722/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1740553740665.png" },
+            { name: "Channel I", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1723/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1740567626692.png" },
+            { name: "Jamuna TV", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1701/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1735560213832.png" },
+            { name: "Channel 24", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1703/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1735556516924.png" },
+            { name: "Ekattor", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1705/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1739963327549.png" },
+            { name: "Independent", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1704/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1739964387847.png" },
+            { name: "Somoy", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1702/output/index.m3u8", logo: "https://tstatic.akash-go.com/cms-ui/images/custom-content/1735560559088.png" },
+            { name: "Channel I", url: "https://tvsen6.aynaott.com/channeli/index.m3u8?e=1753741199&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=29e9b3ff219922de66c032adb4d6cca5", logo: "https://s3.aynaott.com/storage/28931315743beff50fc2c1312b1f8261" },
+            { name: "RTV", url: "https://tvsen5.aynaott.com/RtvHD/index.m3u8?e=1753741200&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=8518bab8ef9355885a2e9c3fbbd55b47", logo: "https://s3.aynaott.com/storage/fd634ca672c8294f109225ca42d20991" },
+            { name: "ATN Bangla", url: "https://tvsen5.aynaott.com/atnbangla/index.m3u8?e=1753741200&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=3d1a0272a03dccbd358530e453306a0e", logo: "https://s3.aynaott.com/storage/a4d2bbdb65b4abc239eaddedda1e5d22" },
+            { name: "ETV", url: "https://tvsen6.aynaott.com/etv/index.m3u8?e=1753741200&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=b2dcad848664a69ead35186027779c9b", logo: "https://s3.aynaott.com/storage/d805cf57543080b49de8a2621cd54da4" },
+            { name: "Maasranga TV", url: "https://tvsen6.aynaott.com/maasrangatv/tracks-v1a1/mono.ts.m3u8", logo: "https://s3.aynaott.com/storage/5db4a54244a315684254b441e92539e2" },
+            { name: "Deepto TV", url: "https://tvsen5.aynaott.com/DeeptoTVHD/index.fmp4.m3u8?token=70082a598a794317d35c2236906d0ba0539298fe-010185cb44f858300084c6aefe087085-1753734601-1753733701&remote=no_check_ip", logo: "https://s3.aynaott.com/storage/12462ef0383fa0e927215d56cd51acf8" },
+            { name: "Gazi TV", url: "https://tvsen6.aynaott.com/gtvhdforgame/tracks-v1a1/mono.ts.m3u8", logo: "https://s3.aynaott.com/storage/0b4d83d0baf7513beae135e134fced2c" },
+            { name: "Desh TV", url: "https://tvsen6.aynaott.com/deshtv/index.m3u8?e=1753741202&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=65ab91e6325bfae402d5e6c110664df7", logo: "https://s3.aynaott.com/storage/9ef657aca7c0009e4f0675af3b5190d8" },
+            { name: "Boishakhi TV", url: "https://tvsen6.aynaott.com/boishakhitv/index.m3u8?e=1753741202&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=dc76daf9531d10db035f1048615f2214", logo: "https://s3.aynaott.com/storage/ec66cdf9538da75b08112f9ae2f151bc" },
+            { name: "Asian TV", url: "https://tvsen6.aynaott.com/asiantv/index.m3u8?e=1753741203&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=61cdab06c09ecd648357cf4ac0679f74", logo: "https://s3.aynaott.com/storage/8faf522ac37bfcd9c163145f77a9a024" },
+            { name: "SA TV", url: "https://tvsen6.aynaott.com/satv/index.m3u8?e=1753741203&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=3bba4c56325c7ade12be44d6d003375b", logo: "https://s3.aynaott.com/storage/83796140b05a889d37c4c98ed8c43821" },
+            { name: "DBC News", url: "https://tvsen6.aynaott.com/dbcnews/index.m3u8?e=1753741204&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=de6168e3320b292be83833132d83ade8", logo: "https://s3.aynaott.com/storage/e8bb743022a2b6b0ee714bbdb2715cbe" },
+            { name: "Tv9 Bangla", url: "https://d35j504z0x2vu2.cloudfront.net/v1/master/0bc8e8376bd8417a1b6761138aa41c26c7309312/tv9-bangla/main.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/channels4_profile.jpg" },
+            { name: "Mohona TV", url: "https://tvsen6.aynaott.com/mohonatv/index.m3u8?e=1753741205&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=7747ffeca756c12cc69dcb4b3c9312e8", logo: "ttps://s3.aynaott.com/storage/663c8079982ff6a45fc99e78c865a63d" },
+            { name: "News 24", url: "https://tvsen6.aynaott.com/news24/index.m3u8?e=1753741204&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=0e298e2f9e3a55bb4a903008493653ec", logo: "https://s3.aynaott.com/storage/b102f206ea73dfdbc591e9cf6c8c478d" },
+            { name: "Bangla TV", url: "https://tvsen6.aynaott.com/banglatv/index.m3u8?e=1753741205&u=9a031201-22d8-4f7e-9516-7d246a8fedc3&token=f12df6b329a0ee4ea22ef2c0634a39c6", logo: "https://s3.aynaott.com/storage/5b22893ae4e816ef2cf87e63c96e9e08" },
+            { name: "DD বাংলা", url: "https://d3eyhgoylams0m.cloudfront.net/v1/manifest/93ce20f0f52760bf38be911ff4c91ed02aa2fd92/ed7bd2c7-8d10-4051-b397-2f6b90f99acb/2e9e32a4-c4f7-49c3-96d6-c4e3660c7e3f/2.m3u8", logo: "https://raw.githubusercontent.com/RsNetwork2/All-logo/refs/heads/main/Dd_Bangla.png" }
+        ];
+
+        let hls;
+        let currentChannelIndex = 0;
+
+        // Function to display a message to the user
+        function showMessage(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        // Close message box when OK button is clicked
+        closeMessageBtn.onclick = () => {
+            messageBox.classList.add('hidden');
+        };
+
+        function loadChannel(url, name) {
+            loadingIndicator.classList.remove('hidden');
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+                hls.on(Hls.Events.BUFFER_APPENDED, function() {
+                    loadingIndicator.classList.add('hidden');
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support for some browsers (e.g., Safari)
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+                loadingIndicator.classList.add('hidden');
+            } else {
+                showMessage('দুঃখিত, আপনার ব্রাউজার এই ফরম্যাটটি সমর্থন করে না।');
+                loadingIndicator.classList.add('hidden');
+            }
+            currentChannelNameEl.textContent = name;
+        }
+        
+        // Create buttons for each channel
+        channels.forEach((channel, index) => {
+            const button = document.createElement('button');
+            button.className = "py-4 px-6 rounded-xl bg-gray-700 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200 text-base md:text-lg font-medium shadow-md flex-shrink-0 flex items-center justify-center gap-2";
+            button.onclick = () => {
+                currentChannelIndex = index;
+                loadChannel(channel.url, channel.name);
+            };
+            
+            const img = document.createElement('img');
+            img.src = channel.logo;
+            img.className = "w-8 h-8 rounded-full flex-shrink-0";
+            img.alt = channel.name + " logo";
+            
+            const span = document.createElement('span');
+            span.textContent = channel.name;
+
+            button.appendChild(img);
+            button.appendChild(span);
+            channelListContainer.appendChild(button);
+        });
+
+        // Event listeners for Previous and Next buttons
+        prevBtn.onclick = () => {
+            currentChannelIndex = (currentChannelIndex - 1 + channels.length) % channels.length;
+            const channel = channels[currentChannelIndex];
+            loadChannel(channel.url, channel.name);
+        };
+
+        nextBtn.onclick = () => {
+            currentChannelIndex = (currentChannelIndex + 1) % channels.length;
+            const channel = channels[currentChannelIndex];
+            loadChannel(channel.url, channel.name);
+        };
+
+        // Load the first channel by default
+        if (channels.length > 0) {
+            loadChannel(channels[0].url, channels[0].name);
+        }
+    </script>
 </body>
 </html>
